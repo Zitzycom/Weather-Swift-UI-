@@ -2,22 +2,16 @@ import SwiftUI
 
 struct MainView: View {
     @EnvironmentObject var appState: AppState
-    @StateObject private var viewModel: WeatherViewModel
+    let repository: WeatherRepositoryProtocol
 
-    init(repository: WeatherRepository) {
-        _viewModel = StateObject(wrappedValue: WeatherViewModel(repository: repository))
+    init(repository: WeatherRepositoryProtocol) {
+        self.repository = repository
     }
 
     var body: some View {
         NavigationView {
             Group {
-                if let idx = appState.selectedCityIndex, idx < appState.cities.count {
-                    let city = appState.cities[idx]
-                    MainCityView(city: city, viewModel: viewModel)
-                        .task {
-                            await viewModel.loadWeather(for: city)
-                        }
-                } else {
+                if appState.cities.isEmpty {
                     VStack(spacing: 16) {
                         Text("Пока нет городов")
                             .font(.title2)
@@ -26,30 +20,26 @@ struct MainView: View {
                             .foregroundColor(.secondary)
                     }
                     .padding()
-                }
-            }
-            .navigationTitle("Погода")
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    if !appState.cities.isEmpty {
-                        Menu {
-                            ForEach(appState.cities.indices, id: \.self) { i in
-                                let c = appState.cities[i]
-                                Button(c.displayName) {
-                                    appState.selectedCityIndex = i
-                                }
+                } else {
+                    ScrollView {
+                        VStack(spacing: 8) {
+                            ForEach(appState.cities, id: \.id) { city in
+                                CityWeatherContainer(city: city, repository: repository)
                             }
-                        } label: {
-                            Image(systemName: "list.bullet")
                         }
                     }
                 }
             }
+            .navigationTitle("Погода")
         }
     }
 }
 
 #Preview {
-    MainView(repository: DefaultWeatherRepository(client: DefaultNetworkClient(), apiKey: "")  )
+    MainView(repository: WeatherRepository(client: NetworkManager(), apiKey: ""))
         .environmentObject(AppState())
 }
+
+
+
+

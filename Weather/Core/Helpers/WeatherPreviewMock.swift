@@ -1,4 +1,3 @@
-
 import Foundation
 
 enum WeatherPreviewMock {
@@ -63,7 +62,8 @@ enum WeatherPreviewMock {
             name: "Moscow",
             country: "RU",
             lat: 55.7558,
-            lon: 37.6173
+            lon: 37.6173,
+            state: "Moscow"
         )
 
         static let saintPetersburg = City(
@@ -71,7 +71,9 @@ enum WeatherPreviewMock {
             name: "Saint Petersburg",
             country: "RU",
             lat: 59.9311,
-            lon: 30.3609
+            lon: 30.3609,
+            state: "Moscow"
+
         )
 
         static let newYork = City(
@@ -79,7 +81,9 @@ enum WeatherPreviewMock {
             name: "New York",
             country: "US",
             lat: 40.7128,
-            lon: -74.0060
+            lon: -74.0060,
+            state: "Moscow"
+
         )
 
         static let allCities = [moscow, saintPetersburg, newYork]

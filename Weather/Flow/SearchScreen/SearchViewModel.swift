@@ -6,17 +6,24 @@ final class SearchViewModel: ObservableObject {
     @Published var results: [GeoCodingItem] = []
     @Published var isSearching = false
     @Published var errorText: String? = nil
+    @Published var viewId = UUID()
     
-    private let repository: WeatherRepository
+    private let repository: WeatherRepositoryProtocol
     private let appState: AppState
     
-    
-    init(repository: WeatherRepository, appState: AppState) {
+    init(repository: WeatherRepositoryProtocol, appState: AppState) {
         self.repository = repository
         self.appState = appState
     }
     
-    func performSearch() async {
+    func performSearch() {
+        Task { [weak self] in
+            guard let self else { return }
+            await self.performSearch()
+        }
+    }
+    
+    private func performSearch() async {
         errorText = nil
         results = []
         let trimmed = query.trimmingCharacters(in: .whitespaces)
@@ -33,16 +40,34 @@ final class SearchViewModel: ObservableObject {
     }
     
     func addCity(from item: GeoCodingItem) {
-        let city = City(name: item.name, country: item.country, lat: item.lat, lon: item.lon)
-        appState.cities.append(city)
+        errorText = nil
+        let newCity = City(
+            name: item.name,
+            country: item.country,
+            lat: item.lat,
+            lon: item.lon,
+            state: item.state
+        )
+        
+        if appState.cities.contains(where: { Self.isDuplicate(existing: $0, new: newCity) }) {
+            errorText = "Город уже добавлен."
+            return
+        }
+        
+        appState.cities.append(newCity)
+        appState.selectedCityIndex = appState.cities.count - 1
     }
     
     func selectCity(at index: Int) {
+        guard index >= 0, index < appState.cities.count else { return }
         appState.selectedCityIndex = index
     }
     
-    func removeCity(at offsets: IndexSet) {
-        appState.cities.remove(atOffsets: offsets)
+    func removeCity(_ city: City) {
+        DispatchQueue.main.async {
+            self.appState.removeCity(city)
+            self.viewId = UUID()
+        }
     }
     
     var savedCities: [City] {
@@ -51,5 +76,18 @@ final class SearchViewModel: ObservableObject {
     
     var selectedCityIndex: Int? {
         appState.selectedCityIndex
+    }
+    
+    private static func isDuplicate(existing: City, new: City) -> Bool {
+        let epsilon = 0.00001
+        let sameCoords = abs(existing.lat - new.lat) <= epsilon &&
+        abs(existing.lon - new.lon) <= epsilon
+        
+        let sameFullName =
+        existing.name.compare(new.name, options: .caseInsensitive) == .orderedSame &&
+        (existing.state ?? "").compare(new.state ?? "", options: .caseInsensitive) == .orderedSame &&
+        existing.country.compare(new.country, options: .caseInsensitive) == .orderedSame
+        
+        return sameCoords || sameFullName
     }
 }

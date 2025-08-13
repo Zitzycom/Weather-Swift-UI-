@@ -2,51 +2,65 @@ import SwiftUI
 
 struct MainCityView: View {
     let city: City
-    @StateObject var viewModel: WeatherViewModel
-
+    @ObservedObject var viewModel: WeatherViewModel
+    
+    @State private var isCurrentWeatherExpanded: Bool = true
+    
     var body: some View {
-        ZStack {
-            backgroundView
-                .ignoresSafeArea()
-
-            ScrollView {
-                VStack(spacing: 20) {
-                    if let current = viewModel.currentWeather {
-                        CurrentWeatherView(current: current)
+        ScrollView {
+            VStack(spacing: 20) {
+                if let current = viewModel.currentWeather {
+                    Group {
+                        if isCurrentWeatherExpanded {
+                            CurrentWeatherCompactView(current: current)
+                        } else {
+                            CurrentWeatherView(current: current)
+                            createDescriptionItems()
+                        }
                     }
-
-                    if let forecast = viewModel.forecast {
-                        ForecastListView(response: forecast)
-                            .frame(maxWidth: .infinity)
-                            .background(Color.white.opacity(0.1))
+                    .background(
+                        backgroundView
                             .clipShape(RoundedRectangle(cornerRadius: 12))
-                    }
-
-                    if viewModel.isLoading {
-                        ProgressView("Загрузка...")
-                            .padding()
-                            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
-                    }
-
-                    if let error = viewModel.errorMessage {
-                        Text(error)
-                            .foregroundColor(.red)
-                            .padding()
+                    )
+                    .onTapGesture {
+                        withAnimation(.easeInOut) {
+                            isCurrentWeatherExpanded.toggle()
+                        }
                     }
                 }
-                .padding()
             }
-            .task {
-                await viewModel.loadWeather(for: city, days: 5)
-            }
-            .refreshable {
-                await viewModel.loadWeather(for: city, days: 5)
-            }
+            .padding(.horizontal, 16)
         }
-        .navigationTitle(city.displayName)
-        .navigationBarTitleDisplayMode(.inline)
+        .task {
+            viewModel.loadWeather(for: city)
+        }
+        .refreshable {
+            viewModel.loadWeather(for: city)
+        }
     }
-
+    
+    @ViewBuilder
+    private func createDescriptionItems() -> some View {
+        if let forecast = viewModel.forecast {
+            ForecastListView(response: forecast)
+                .frame(maxWidth: .infinity)
+                .background(Color.white.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+        }
+        
+        if viewModel.isLoading {
+            ProgressView("Загрузка...")
+                .padding()
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 12))
+        }
+        
+        if let error = viewModel.errorMessage {
+            Text(error)
+                .foregroundColor(.red)
+                .padding()
+        }
+    }
+    
     @ViewBuilder
     private var backgroundView: some View {
         let main = viewModel.currentWeather?.weather.first?.main ?? "Clear"
@@ -68,13 +82,5 @@ struct MainCityView: View {
 }
 
 #Preview {
-    MainCityView(city: WeatherPreviewMock.CityPreviewMock.moscow,
-                 viewModel: WeatherViewModel(
-                    repository:
-                        DefaultWeatherRepository(
-                            client: DefaultNetworkClient(),
-                            apiKey: WeatherAPI.apiKey
-                        )
-                 )
-    )
+    MainCityView(city: WeatherPreviewMock.CityPreviewMock.moscow, viewModel: WeatherViewModel(repository: WeatherRepository(client: NetworkManager(), apiKey: WeatherAPI.apiKey)))
 }

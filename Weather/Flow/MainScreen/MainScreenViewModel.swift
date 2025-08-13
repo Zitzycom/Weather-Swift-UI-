@@ -7,28 +7,28 @@ final class WeatherViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private let repository: WeatherRepository
+    private let repository: WeatherRepositoryProtocol
 
-    init(repository: WeatherRepository) {
+    init(repository: WeatherRepositoryProtocol) {
         self.repository = repository
     }
 
-    func loadWeather(for city: City, days: Int = 7) async {
+    func loadWeather(for city: City) {
+        Task { [weak self] in
+            guard let self else { return }
+            await loadWeather(for: city)
+        }
+    }
+
+    private func loadWeather(for city: City) async {
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
         do {
-            forecast = try await repository.getForecast(lat: city.lat, lon: city.lon, days: days)
+            forecast = try await repository.getForecast(lat: city.lat, lon: city.lon)
             currentWeather = try await repository.getCurrentWeather(lat: city.lat, lon: city.lon)
-            print(currentWeather)
-            print("-------------------------------------------------------------------------------------------------------------------------------------------------------------")
-            print(forecast)
         } catch {
             errorMessage = error.localizedDescription
         }
-        isLoading = false
     }
 }
-
-
-
-

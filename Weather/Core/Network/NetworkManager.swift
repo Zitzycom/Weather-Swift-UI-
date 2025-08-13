@@ -1,10 +1,10 @@
 import Foundation
 
-protocol NetworkClient {
+protocol NetworkManagerProtocol {
     func request<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T
 }
 
-struct DefaultNetworkClient: NetworkClient {
+struct NetworkManager: NetworkManagerProtocol {
     func request<T: Decodable>(_ endpoint: Endpoint, as type: T.Type) async throws -> T {
         guard let url = endpoint.url else { throw NetworkError.invalidURL }
         var request = URLRequest(url: url)
